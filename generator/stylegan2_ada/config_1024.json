@@ -1,0 +1,12 @@
+{
+    "model_argument":{
+        "z_dim"               : 512,
+        "c_dim"               : 0,
+        "w_dim"               : 512,
+        "img_resolution"      : 1024,
+        "img_channels"        : 3
+    },
+    "ckpt": "C:\\Users\\Neil\\OneDrive - Professional\\Documents\\Python scripts\\These\\TheseUtils\\generator\\pretrained_models\\stylegan2_ada\\stylegan2_ada_1024.pt",
+    "device": "cuda",
+    "require_grad": false
+}

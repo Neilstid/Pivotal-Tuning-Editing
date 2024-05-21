@@ -1,0 +1,21 @@
+{
+    "model_argument":{
+        "z_dim"               : 512,
+        "c_dim"               : 0,
+        "w_dim"               : 512,
+        "img_resolution"      : 1024,
+        "img_channels"        : 3,
+        "channel_base"        : 32768,
+        "channel_max"         : 512,
+        "num_fp16_res"        : 4,
+        "conv_kernel"         : 3,
+        "use_radial_filters"  : false,
+        "conv_clamp"          : null,
+        "mapping_kwargs"      : {
+            "num_layers"      : 2
+        }
+    },
+    "ckpt"                : "C:\\Users\\Neil\\OneDrive - Professional\\Documents\\Python scripts\\These\\TheseUtils\\generator\\pretrained_models\\stylegan3\\G_stylegan3_1024_FFHQ.pt",
+    "device"              : "cuda",
+    "require_grad"        : false
+}

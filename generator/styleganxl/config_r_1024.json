@@ -1,0 +1,25 @@
+{
+    "model_argument":{
+        "z_dim"               : 64,
+        "c_dim"               : 0,
+        "w_dim"               : 512,
+        "img_resolution"      : 1024,
+        "img_channels"        : 3,
+        "up_factor"           : 2,
+        "head_layers"         : 0,
+        "channel_base"        : 16384,
+        "channel_max"         : 1024,
+        "num_fp16_res"        : 4,
+        "use_radial_filters"  : true,
+        "conv_clamp"          : null,
+        "num_layers"          : 21,
+        "first_cutoff"        : 2,
+        "num_critical"        : 0,
+        "mapping_kwargs"      : {
+            "num_layers"      : 2
+        }
+    },
+    "ckpt"                : "C:\\Users\\Neil\\OneDrive - Professional\\Documents\\Python scripts\\These\\TheseUtils\\generator\\pretrained_models\\styleganxl\\styleganxl_1024.pt",
+    "device"              : "cuda",
+    "require_grad"        : false
+}
