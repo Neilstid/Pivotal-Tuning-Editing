@@ -1,5 +1,5 @@
 from numpy import array as np_array, absolute, arctan, power as np_power, sqrt as np_sqrt
-from cv2 import filter2D
+from cv2 import filter2D # pylint: disable=E0611
 import numpy as np
 
 
@@ -45,7 +45,7 @@ SCHARR_KERNEL_Y: np_array = np_array([
 ])
 
 
-__all__ = ['gabor_kernel', 'gabor']
+__all__ = ['gabor_kernel']
 
 
 def _sigma_prefactor(bandwidth):
@@ -55,8 +55,10 @@ def _sigma_prefactor(bandwidth):
         (2.0 ** b + 1) / (2.0 ** b - 1)
 
 
-def gabor_kernel(frequency, theta=0, bandwidth=1, sigma_x=None, sigma_y=None,
-                 n_stds=3, offset=0, dtype=np.complex128):
+def gabor_kernel(
+    frequency, theta=0, bandwidth=1, sigma_x=None, sigma_y=None,
+    n_stds=3, offset=0, dtype=np.complex128
+):
     if sigma_x is None:
         sigma_x = _sigma_prefactor(bandwidth) / frequency
     if sigma_y is None:

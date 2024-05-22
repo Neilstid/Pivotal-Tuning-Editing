@@ -1,14 +1,13 @@
-#!/usr/bin/env python
-#coding=utf8
+# !/usr/bin/env python
+# coding=utf8
 
 import os
 import math
+from typing import NoReturn, List
 import cv2
 import numpy as np
-from typing import NoReturn
 import dlib
-from scipy.spatial import Delaunay
-from typing import List
+from scipy.spatial import Delaunay # pylint: disable=E0611
 
 
 #==============================================================================
@@ -23,7 +22,7 @@ LANDMARKS_MEDIAPIPE_FACE2POINTS = 4
 
 
 #==============================================================================
-# Module initialisation 
+# Module initialisation
 #==============================================================================
 
 # Get the dlib model
@@ -31,8 +30,8 @@ DLIB_DATA_DIR: str = os.environ.get(
     'DLIB_DATA_DIR',
     os.path.join(os.path.dirname(os.path.realpath(__file__)), 'dlib')
 )
-dlib_detector = dlib.get_frontal_face_detector()
-dlib_predictor = dlib.shape_predictor(
+dlib_detector = dlib.get_frontal_face_detector() # pylint: disable=E1101
+dlib_predictor = dlib.shape_predictor( # pylint: disable=E1101
     os.path.join(DLIB_DATA_DIR, 'shape_predictor_68_face_landmarks.dat')
 )
 
@@ -54,7 +53,7 @@ def align(
         eyecorner_dst: list = all_points[0]
 
     # Eye corners
-    h, w, c = images[0].shape
+    h, w, _ = images[0].shape
 
     images_norm: list = []
     points_norm: list = []
@@ -68,7 +67,7 @@ def align(
     # Initialize location of average points to 0s
     points_avg: np.array = np.array(
         [(0, 0)] * (len(all_points[0]) + len(boundary_pts)),
-        np.float32()
+        np.float32
     )
 
     # Get the number of image
@@ -94,11 +93,11 @@ def align(
         tform: list = similarity_transform(eyecorner_src, eyecorner_dst)
 
         # Apply similarity transformation
-        img: np.array = cv2.warpAffine(images[i], tform, (w, h))
+        img: np.array = cv2.warpAffine(images[i], tform, (w, h)) # pylint: disable=E1101
 
         # Apply similarity transform on points
         points2: np.array = np.reshape(np.array(points1), (points1.shape[0], 1, 2))
-        points: np.array = cv2.transform(points2, tform)
+        points: np.array = cv2.transform(points2, tform) # pylint: disable=E1101
         points: np.array = np.float32(np.reshape(points, (points1.shape[0], 2)))
 
         # Append boundary points. Will be used in Delaunay Triangulation
@@ -113,14 +112,14 @@ def align(
 
     # Delaunay triangulation
     rect: tuple = (0, 0, w, h)
-    tri = calculate_triangles(rect, np.array(points_avg))
+    tri = calculate_triangles(np.array(points_avg))
 
     # Output image
     output = []
 
     # Warp input images to average image landmarks
     for i in range(1 if skip_ref else 0, num_images):
-        img: np.array = np.zeros((h, w, 3), np.float32())
+        img: np.array = np.zeros((h, w, 3), np.float32)
         # Transform triangles one by one
         for j in range(0, len(tri)):
             t_in = []
@@ -137,14 +136,14 @@ def align(
                 t_out.append(p_out)
 
             warp_triangle(images_norm[i], img, t_in, t_out)
-            
+
         # Add image intensities for averaging
         img = img.astype(np.uint8)
         output.append(img)
-    
+
     return output
 
-    
+
 # Compute similarity transform given two sets of two points.
 # OpenCV requires 3 pairs of corresponding points.
 # We are faking the third one.
@@ -179,7 +178,7 @@ def similarity_transform(in_points: list, out_points: list) -> list:
 
     out_pts.append([np.int32(xout), np.int32(yout)])
 
-    tform = cv2.estimateAffinePartial2D(np.array([in_pts]), np.array([out_pts]))
+    tform = cv2.estimateAffinePartial2D(np.array([in_pts]), np.array([out_pts])) # pylint: disable=E1101
     
     return tform[0]
 
@@ -206,7 +205,7 @@ def rect_contains(rect: list, point: list) -> bool:
     return True
 
 
-def calculate_triangles(rect: np.array, points: list) -> list:
+def calculate_triangles(points: list) -> list:
     return np.array([(p[0], p[1], p[2]) for p in Delaunay(points).simplices])
 
 
@@ -220,11 +219,11 @@ def constrain_point(p: list, w: int, h: int) -> tuple:
 def apply_affine_transform(src: np.array, src_tri: np.array, dst_tri: np.array, size: list) -> np.array:
 
     # Given a pair of triangles, find the affine transform.
-    warp_mat = cv2.getAffineTransform(np.float32(src_tri), np.float32(dst_tri))
+    warp_mat = cv2.getAffineTransform(np.float32(src_tri), np.float32(dst_tri)) # pylint: disable=E1101
 
     # Apply the Affine Transform just found to the src image
-    dst = cv2.warpAffine(src, warp_mat, (size[0], size[1]), None,
-        flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101)
+    dst = cv2.warpAffine(src, warp_mat, (size[0], size[1]), None, # pylint: disable=E1101
+        flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101) # pylint: disable=E1101
 
     return dst
 
@@ -248,8 +247,8 @@ def warp_triangle(
     """
 
     # Find bounding rectangle for each triangle
-    r1 = cv2.boundingRect(np.float32([t1]))
-    r2 = cv2.boundingRect(np.float32([t2]))
+    r1 = cv2.boundingRect(np.float32([t1])) # pylint: disable=E1101
+    r2 = cv2.boundingRect(np.float32([t2])) # pylint: disable=E1101
 
     # Offset points by left top corner of the respective rectangles
     t1_rect = []
@@ -263,7 +262,7 @@ def warp_triangle(
 
     # Get mask by filling triangle
     mask = np.zeros((r2[3], r2[2], 3), dtype=np.float32)
-    cv2.fillConvexPoly(mask, np.int32(t2_rect_int), (1.0, 1.0, 1.0), 16, 0)
+    cv2.fillConvexPoly(mask, np.int32(t2_rect_int), (1.0, 1.0, 1.0), 16, 0) # pylint: disable=E1101
 
     # Apply warpImage to small rectangular patches
     img1_rect = img1[r1[1]:r1[1] + r1[3], r1[0]:r1[0] + r1[2]]
@@ -276,3 +275,4 @@ def warp_triangle(
     # Copy triangular region of the rectangular patch to the output image
     img2[r2[1]:r2[1] + r2[3], r2[0]:r2[0] + r2[2]] = img2[r2[1]:r2[1] + r2[3], r2[0]:r2[0] + r2[2]] * ((1.0, 1.0, 1.0) - mask)
     img2[r2[1]:r2[1] + r2[3], r2[0]:r2[0] + r2[2]] = img2[r2[1]:r2[1] + r2[3], r2[0]:r2[0] + r2[2]] + img2_rect
+

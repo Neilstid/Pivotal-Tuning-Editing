@@ -1,25 +1,9 @@
-from typing import Any, Callable, List, Dict, Union
-import os
-import inspect
-
+from typing import Union
 import torch
 import numpy as np
-from tqdm import tqdm
-import torchvision
 from PIL import Image
-
 from decoratorhelper.type_decorator import load_configuration
-from .stylegan2.model import (
-    Generator as StyleGAN2_Generator,
-    Discriminator as StyleGAN2_Discriminator,
-)
-from .stylegan3.model import Generator as StyleGAN3_Generator
-from .stylegan2_ada.model import (
-    Generator as StyleGAN2Ada_Generator,
-    Discriminator as StyleGAN2Ada_Discriminator
-)
-from .styleganxl.model import SuperresGenerator as StyleGANXL_Generator
-from .stylegan3 import dnnlib, legacy
+from .stylegan2.model import Generator as StyleGAN2_Generator
 
 
 def gen_w_space(
@@ -39,11 +23,11 @@ def gen_w_space(
 
     if need_c and latent is None:
         latent = [
-            torch.from_numpy(np.random.RandomState(seed).randn(batch, z_dim)).to(device),
-            torch.zeros([1, 0], device=device),
+            torch.from_numpy(np.random.RandomState(seed).randn(batch, z_dim)).to(device), # pylint: disable=E1101
+            torch.zeros([1, 0], device=device), # pylint: disable=E1101
         ]
     elif latent is None:
-        latent = torch.from_numpy(np.random.RandomState(seed).randn(1, z_dim)).to(
+        latent = torch.from_numpy(np.random.RandomState(seed).randn(1, z_dim)).to( # pylint: disable=E1101
             device
         )
 
@@ -90,79 +74,6 @@ def load_stylegan2_generator(opts):
     generator = StyleGAN2_Generator(**opts["model_argument"])
 
     print("Loading StyleGAN2 from checkpoint: {}".format(opts["ckpt"]))
-    checkpoint = torch.load(opts["ckpt"])
-    generator.load_state_dict(checkpoint)
-
-    device = opts["device"]
-    generator.to(device)
-
-    for param in generator.parameters():
-        param.requires_grad = opts["require_grad"]
-
-    generator.eval()
-
-    return generator
-
-
-@load_configuration(
-    r"C:\Users\Neil\OneDrive - Professional\Documents\Python scripts\These\TheseUtils\generator\stylegan3\config_t_ffhq_1024.json",
-    "opts",
-)
-def load_stylegan3_generator(opts, from_pkl: bool = False):
-    if from_pkl:
-        with dnnlib.util.open_url(
-            "https://api.ngc.nvidia.com/v2/models/nvidia/research/stylegan3/versions/1/files/stylegan3-t-ffhq-1024x1024.pkl"
-        ) as f:
-            generator = legacy.load_network_pkl(f)["G_ema"].to("cuda")
-
-    else:
-        generator = StyleGAN3_Generator(**opts["model_argument"])
-
-        print("Loading StyleGAN3 from checkpoint: {}".format(opts["ckpt"]))
-        checkpoint = torch.load(opts["ckpt"])
-        generator.load_state_dict(checkpoint)
-
-        device = opts["device"]
-        generator.to(device)
-
-        for param in generator.parameters():
-            param.requires_grad = opts["require_grad"]
-
-        generator.eval()
-
-    return generator
-
-
-@load_configuration(
-    r"C:\Users\Neil\OneDrive - Professional\Documents\Python scripts\These\TheseUtils\generator\stylegan2_ada\config_1024.json",
-    "opts",
-)
-def load_stylegan2_ada_generator(opts: dict):
-    generator = StyleGAN2Ada_Generator(**opts["model_argument"])
-
-    print("Loading StyleGAN2-ADA from checkpoint: {}".format(opts["ckpt"]))
-    checkpoint = torch.load(opts["ckpt"])
-    generator.load_state_dict(checkpoint)
-
-    device = opts["device"]
-    generator.to(device)
-
-    for param in generator.parameters():
-        param.requires_grad = opts["require_grad"]
-
-    generator.eval()
-
-    return generator
-
-
-@load_configuration(
-    r"C:\Users\Neil\OneDrive - Professional\Documents\Python scripts\These\TheseUtils\generator\styleganxl\config_r_256.json",
-    "opts",
-)
-def load_styleganxl_generator(opts):
-    generator = StyleGANXL_Generator(**opts["model_argument"])
-
-    print("Loading StyleGAN-XL from checkpoint: {}".format(opts["ckpt"]))
     checkpoint = torch.load(opts["ckpt"])
     generator.load_state_dict(checkpoint)
 

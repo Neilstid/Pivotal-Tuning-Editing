@@ -1,15 +1,14 @@
+import sys
+from typing import Union, List
+import os
 import cv2
-from face.facealign import LANDMARKS_DLIB, LANDMARKS_MEDIAPIPE_FACE2POINTS
-from face.faceclass.face import Face, LANDMARKS_MEDIAPIPE
-from image.filtre.gradient import gradient
 import numpy as np
 import scipy
-from image.blending import fix
-import sys
-from tqdm import tqdm
-from typing import Union, List
 import PIL
-import os
+from image.blending import fix
+from image.filtre.gradient import gradient
+from face.facealign import LANDMARKS_DLIB, LANDMARKS_MEDIAPIPE_FACE2POINTS
+from face.faceclass.face import Face, LANDMARKS_MEDIAPIPE
 
 
 PATCHES_PT = [
@@ -36,7 +35,7 @@ LANDMARKS_REGION = {
     "UpperLipWrinkle": [40, 92, 165, 167, 164, 393, 394, 322, 270, 269, 267, 0, 37, 39],
     "ForeheadWrinkle": [70, 71, 21, 54, 103, 67, 109, 10, 338, 297, 332, 284, 251, 301, 300, 293, 334, 296, 336, 9, 107, 66, 105, 63],
     "MarionetteWrinkle": [
-        [409, 410, 436, 434, 364, 365, 379, 378, 395, 431, 424, 335, 321, 375, 291], 
+        [409, 410, 436, 434, 364, 365, 379, 378, 395, 431, 424, 335, 321, 375, 291],
         [185, 186, 216, 214, 135, 136, 150, 149, 170, 211, 204, 106, 91, 146, 61]
     ],
     "CrowsFootWrinkle": [
@@ -62,12 +61,22 @@ MASK_VALUE = {
 
 
 def get_hist(img, exclude_zero=True):
+    """
+    
+
+    :param img: _description_
+    :type img: _type_
+    :param exclude_zero: _description_, defaults to True
+    :type exclude_zero: bool, optional
+    :return: _description_
+    :rtype: _type_
+    """
     if img.ndim == 3:
         return np.swapaxes(np.stack([
             get_hist(c[..., 0], exclude_zero=exclude_zero) 
             for c in np.split(img, img.shape[-1], axis=-1)
         ]), 0, 1)
-    
+
     hist, _ = np.histogram(img.flatten(), bins=255, range=(0, 255))
     if exclude_zero:
         hist[0] = 0
@@ -77,17 +86,27 @@ def get_hist(img, exclude_zero=True):
 
 
 def transform_table(hist1, hist2):
+    """
+    
+
+    :param hist1: _description_
+    :type hist1: _type_
+    :param hist2: _description_
+    :type hist2: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     assert hist1.shape == hist2.shape
 
     if hist1.ndim == 2:
         return np.swapaxes(np.stack([
-            transform_table(ch1[..., 0], ch2[..., 0]) 
+            transform_table(ch1[..., 0], ch2[..., 0])
             for ch1, ch2 in zip(
-                np.split(hist1, hist1.shape[-1], axis=-1), 
+                np.split(hist1, hist1.shape[-1], axis=-1),
                 np.split(hist2, hist2.shape[-1], axis=-1)
             )
         ]), 0, 1)
-    
+
     table = np.zeros_like(hist1).astype(np.uint16)
     mem_start = 0
     for idx1, vh1 in enumerate(hist1):
@@ -103,10 +122,20 @@ def transform_table(hist1, hist2):
 
 
 def color_transfer(img, table):
+    """
+    
+
+    :param img: _description_
+    :type img: _type_
+    :param table: _description_
+    :type table: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     if img.ndim == 3:
         assert table.ndim == 2
         return np.stack([color_transfer(c[..., 0], ctable[..., 0]) for c, ctable in zip(np.split(img, img.shape[-1], axis=-1), np.split(table, table.shape[-1], axis=-1))], axis=-1)
-    
+
     img_aligned = np.zeros_like(img)
     for idx, value in enumerate(table):
         img_aligned[img == idx] = value
@@ -115,12 +144,36 @@ def color_transfer(img, table):
 
 
 def histogram_match(img1, img2, exclude_zero=True):
+    """
+    
+
+    :param img1: _description_
+    :type img1: _type_
+    :param img2: _description_
+    :type img2: _type_
+    :param exclude_zero: _description_, defaults to True
+    :type exclude_zero: bool, optional
+    :return: _description_
+    :rtype: _type_
+    """
     hist1, hist2 = get_hist(img1, exclude_zero), get_hist(img2, exclude_zero)
     table = transform_table(hist1, hist2)
     return color_transfer(img1, table)
 
 
 def transfer_color(source, target, elements):
+    """
+    
+
+    :param source: _description_
+    :type source: _type_
+    :param target: _description_
+    :type target: _type_
+    :param elements: _description_
+    :type elements: _type_
+    :return: _description_
+    :rtype: _type_
+    """
 
     if isinstance(elements, str):
         elements = MASK_VALUE[elements]
@@ -141,7 +194,7 @@ def transfer_color(source, target, elements):
     img2 = f2.image * mask2
 
     img1_aligned = histogram_match(img1, img2)
-    cv2.imwrite("./PTE_Results/matched.png", img1_aligned)
+    cv2.imwrite("./PTE_Results/matched.png", img1_aligned) # pylint: disable=E1101
 
     img1 = img1_aligned * mask1 + f1.image * ~mask1
 
@@ -149,18 +202,28 @@ def transfer_color(source, target, elements):
 
 
 def wrinkle_remover(path: str, landmarks: Union[str, List[int]] = "LionWrinkle"):
+    """
+    
+
+    :param path: _description_
+    :type path: str
+    :param landmarks: _description_, defaults to "LionWrinkle"
+    :type landmarks: Union[str, List[int]], optional
+    :return: _description_
+    :rtype: _type_
+    """
     ldmk_name = landmarks
     if isinstance(landmarks, str):
         landmarks = LANDMARKS_REGION[landmarks]
 
     use_face2point = isinstance(ldmk_name, str) and ldmk_name == "ForeHeadWrinkle"
 
-    img = cv2.imread(path)
+    img = cv2.imread(path) # pylint: disable=E1101
     f = Face.from_image(img)
     # f.show_landmarks(LANDMARKS_MEDIAPIPE, None, "./ldmk.png")
 
-    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(img_hsv)
+    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) # pylint: disable=E1101
+    _, s, v = cv2.split(img_hsv) # pylint: disable=E1101
     grad_s = gradient(s).astype(np.float64)
     grad_v = gradient(v).astype(np.float64)
 
@@ -172,7 +235,10 @@ def wrinkle_remover(path: str, landmarks: Union[str, List[int]] = "LionWrinkle")
 
     masks = f.get_mask_landmarks(landmarks, landmark_model=LANDMARKS_MEDIAPIPE_FACE2POINTS if use_face2point else LANDMARKS_MEDIAPIPE)
     name, ext = os.path.splitext(os.path.basename(path))
-    cv2.imwrite(os.path.join(r"C:\Users\Neil\OneDrive - Professional\Documents\Python scripts\These\TheseUtils\PTE_Results\PGT_exemple", f"{name}_{ldmk_name}_mask{ext}"), masks * 255)
+    cv2.imwrite(os.path.join( # pylint: disable=E1101
+        r"C:\Users\Neil\OneDrive - Professional\Documents\Python scripts\These\TheseUtils\PTE_Results\PGT_exemple", 
+        f"{name}_{ldmk_name}_mask{ext}"), masks * 255
+    )
 
     grad_v *= masks
     grad_s *= masks
@@ -180,20 +246,20 @@ def wrinkle_remover(path: str, landmarks: Union[str, List[int]] = "LionWrinkle")
     grad_v = (grad_v * 255).astype(np.uint8)[masks == 1]
     grad_s = (grad_s * 255).astype(np.uint8)[masks == 1]
 
-    _, grad_v = cv2.threshold(grad_v, 127.5, 255, cv2.THRESH_OTSU)
-    _, grad_s = cv2.threshold(grad_s, 127.5, 255, cv2.THRESH_OTSU)
+    _, grad_v = cv2.threshold(grad_v, 127.5, 255, cv2.THRESH_OTSU) # pylint: disable=E1101
+    _, grad_s = cv2.threshold(grad_s, 127.5, 255, cv2.THRESH_OTSU) # pylint: disable=E1101
     wrinkles = np.zeros(img.shape[:2], np.uint8)
     wrinkles[masks == 1] = (grad_s[:,0]==255) * 255
 
     # wrinkles = scipy.ndimage.binary_closing(wrinkle, iterations=3).astype(np.uint8) * 255
     # cv2.imwrite("./gradient_lion.png", wrinkles)
 
-    contours, hierarchy = cv2.findContours(wrinkles, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(wrinkles, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE) # pylint: disable=E1101
 
     areas = np.array([
-        cv2.contourArea(c) for c in contours
+        cv2.contourArea(c) for c in contours # pylint: disable=E1101
     ])
-    q75, q50, q25 = np.percentile(areas[areas > 0], [75, 50, 25])
+    q25 = np.percentile(areas[areas > 0], [25])
     detected_wrinkles = np.where(areas > (q25))[0]
     # cv2.imwrite("./wrinkle.png", cv2.drawContours(img, tuple([contours[i] for i in detected_wrinkles]), -1, (255, 255, 255), -1))
 
@@ -228,27 +294,21 @@ def stylegan_crop(
     transform_size: int = 1024, enable_padding: bool = True, 
     random_shift: float = 0.0
 ):
-    img = cv2.imread(read_path)
+    img = cv2.imread(read_path) # pylint: disable=E1101
     img_scale_factor = img.shape[0] / img.shape[1]
-    img = cv2.resize(img, (1500, int(1500 * img_scale_factor)))
+    img = cv2.resize(img, (1500, int(1500 * img_scale_factor))) # pylint: disable=E1101
 
     face = Face.from_image(img)
-    img = PIL.Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    img = PIL.Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)) # pylint: disable=E1101
 
     try:
         lm = face.landmark(landmark_model=LANDMARKS_DLIB)
     except RuntimeError:
         return
 
-    lm_chin          = lm[0  : 17]  # left-right
-    lm_eyebrow_left  = lm[17 : 22]  # left-right
-    lm_eyebrow_right = lm[22 : 27]  # left-right
-    lm_nose          = lm[27 : 31]  # top-down
-    lm_nostrils      = lm[31 : 36]  # top-down
     lm_eye_left      = lm[36 : 42]  # left-clockwise
     lm_eye_right     = lm[42 : 48]  # left-clockwise
     lm_mouth_outer   = lm[48 : 60]  # left-clockwise
-    lm_mouth_inner   = lm[60 : 68]  # left-clockwise
 
     # Calculate auxiliary vectors.
     eye_left     = np.mean(lm_eye_left, axis=0)
@@ -287,7 +347,7 @@ def stylegan_crop(
     shrink = int(np.floor(qsize / output_size * 0.5))
     if shrink > 1:
         rsize = (int(np.rint(float(img.size[0]) / shrink)), int(np.rint(float(img.size[1]) / shrink)))
-        img = img.resize(rsize, PIL.Image.ANTIALIAS)
+        img = img.resize(rsize, PIL.Image.ANTIALIAS) # pylint: disable=E1101
         quad /= shrink
         qsize /= shrink
 
@@ -315,9 +375,9 @@ def stylegan_crop(
         quad += pad[:2]
 
     # Transform.
-    img = img.transform((transform_size, transform_size), PIL.Image.QUAD, (quad + 0.5).flatten(), PIL.Image.BILINEAR)
+    img = img.transform((transform_size, transform_size), PIL.Image.QUAD, (quad + 0.5).flatten(), PIL.Image.BILINEAR) # pylint: disable=E1101
     if output_size < transform_size:
-        img = img.resize((output_size, output_size), PIL.Image.LANCZOS)
+        img = img.resize((output_size, output_size), PIL.Image.LANCZOS) # pylint: disable=E1101
 
     # Save aligned image.
     img.save(write_path)

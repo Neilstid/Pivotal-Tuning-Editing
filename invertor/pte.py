@@ -1,24 +1,24 @@
+import copy
+from typing import Callable, Union, List, Literal, Dict
 import cv2
 from sklearn.decomposition import PCA
 import torch
 import numpy as np
-import copy
-from typing import Callable, Union, List, Literal, Dict
 from PIL import Image
+from PIL import ImageDraw
 from tqdm import tqdm
+import dill
+import facenet_pytorch
 from face.facealign import LANDMARKS_MEDIAPIPE
 from face.faceclass.face import Face
-from invertor.experimental import invert_StyleGAN_experiments
-from PIL import ImageDraw
-from invertor.loss import LpipsLoss
-import facenet_pytorch
 from image.edit import wrinkle_remover
-import dill
 from invertor.utils import read_image
+from invertor.loss import LpipsLoss
+from invertor.experimental import invert_StyleGAN_experiments
 
 
 def pivotal_tuning_direction(
-    G: torch.nn.Module,
+    G: torch.nn.Module, # pylint: disable=C0103
     w_pivot: List[torch.Tensor],
     target: List[Union[str, Image.Image, np.array, torch.Tensor, None]],
     wrinkle_targets: List[Union[str, Image.Image, np.array, torch.Tensor, None]],
@@ -31,7 +31,6 @@ def pivotal_tuning_direction(
     opt_args: Dict = {},
     wrinkle_region: Union[List[int], str] = "LionWrinkle",
     work_on_copy: bool = True,
-    lambda_space_reg=0.2
 ):
     if device == "auto":
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -40,7 +39,7 @@ def pivotal_tuning_direction(
         generator_kwargs = {"input_is_latent": True, "return_latents": False}
 
     if isinstance(wrinkle_targets, np.ndarray):
-        wrinkle_targets = torch.from_numpy(wrinkle_targets).to(device=device)
+        wrinkle_targets = torch.from_numpy(wrinkle_targets).to(device=device) # pylint: disable=E1101
 
     if work_on_copy:
         G_pti = copy.deepcopy(G).train().requires_grad_(True).to(device)
@@ -51,7 +50,7 @@ def pivotal_tuning_direction(
     for w in w_pivot:
         # w.requires_grad_(False)
         latent_pivots.append(space_modifier(w).squeeze(0))
-    latent_pivots = torch.stack(latent_pivots, dim=0)
+    latent_pivots = torch.stack(latent_pivots, dim=0) # pylint: disable=E1101
 
     # Load LPIPS feature detector.
     lpips_loss = LpipsLoss()
@@ -60,17 +59,17 @@ def pivotal_tuning_direction(
     l2_criterion = torch.nn.MSELoss(reduction='none')
 
     # Wrinkle features
-    mask_roi = torch.from_numpy(Face.from_tensor(read_image(img_invert_path=target[0])).get_mask_landmarks(
+    mask_roi = torch.from_numpy(Face.from_tensor(read_image(img_invert_path=target[0])).get_mask_landmarks( # pylint: disable=E1101
         wrinkle_region, landmark_model=LANDMARKS_MEDIAPIPE
     )).to("cuda")
     mask_roi = mask_roi.repeat(3, 1, 1)
 
     # Features for target image.
-    targeted_images = torch.stack([
+    targeted_images = torch.stack([ # pylint: disable=E1101
         read_image(img_invert_path=trgt, device=device).squeeze(0) 
         for trgt in target
     ], dim=0)
-    c = torch.zeros([1, 0], device=device)
+    c = torch.zeros([1, 0], device=device) # pylint: disable=E1101
 
     # initalize optimizer
     optimizer = gradient_optimizer(G_pti.parameters(), lr=learning_rate, **opt_args)
@@ -114,13 +113,9 @@ def pivotal_tuning(
     generator_kwargs: dict = None,
     gradient_optimizer: torch.optim.Optimizer = torch.optim.Adam, 
     opt_args: Dict = {},
-    features_fn='Gabor',
-    color_space='RGB',
-    lambda_space_reg=0.2,
     lambda_low_level_features=1/100,
     progressive=False,
     negative_example=None,
-    wrinkle_region: Union[List[int], str] = "LionWrinkle",
 ):
     if device == "auto":
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -143,7 +138,7 @@ def pivotal_tuning(
     if negative_example is not None:
         negative_example = read_image(negative_example, device=device)
 
-    c = torch.zeros([1, 0], device=device)
+    c = torch.zeros([1, 0], device=device) # pylint: disable=E1101
 
     # initalize optimizer
     optimizer = gradient_optimizer(G_pti.parameters(), lr=learning_rate, **opt_args)
@@ -189,7 +184,7 @@ def pivotal_tuning(
 class PivotalTuningEdition:
 
     # -------------------------------------------------------------------------
-    # Overloaded Function 
+    # Overloaded Function
     # -------------------------------------------------------------------------
     def __init__(
         self, generator: torch.nn.Module, target: Union[str, Image.Image, np.array, torch.Tensor],
@@ -230,73 +225,142 @@ class PivotalTuningEdition:
         self.wrinkle_region = wrinkle_region
 
     # -------------------------------------------------------------------------
-    # Getter / Setter 
+    # Getter / Setter
     # -------------------------------------------------------------------------
 
     def set_target(self, t):
+        """
+        
+
+        :param t: _description_
+        :type t: _type_
+        """
         self._target = t
 
 
     def set_generator(self, g):
+        """
+        
+
+        :param g: _description_
+        :type g: _type_
+        """
         self._generator = g
 
 
     def get_tuned_img(self):
+        """
+        
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._tensor_to_pil(
-            self._generator_pti(self._space_modifier(self._pivot), torch.zeros([1, 0], device=self._device), **self._generator_kwargs)
+            self._generator_pti(
+                self._space_modifier(self._pivot),
+                torch.zeros([1, 0], device=self._device), # pylint: disable=E1101
+                **self._generator_kwargs
+            )
         )
-    
+
 
     def get_inverted_img(self):
+        """
+        
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._tensor_to_pil(
-            self._generator(self._space_modifier(self._pivot), torch.zeros([1, 0], device=self._device), **self._generator_kwargs)
+            self._generator(
+                self._space_modifier(self._pivot),
+                torch.zeros([1, 0], device=self._device), # pylint: disable=E1101
+                **self._generator_kwargs
+            )
         )
-    
+
 
     def get_pivot(self):
+        """
+        
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._pivot
-    
+
 
     @property
     def generator_pti(self):
+        """
+        
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._generator_pti
-    
+
 
     def get_direction(self):
+        """
+
+
+        :return: _description_
+        :rtype: _type_
+        """
         return self._direction
 
 
     # -------------------------------------------------------------------------
-    # Saving / Loading 
+    # Saving / Loading
     # -------------------------------------------------------------------------
 
     def save(self, path):
+        """
+        
+
+        :param path: _description_
+        :type path: _type_
+        """
         with open(path, "wb") as fp:
             dill.dump(self, fp)
 
     @staticmethod
     def load(path):
+        """
+        
+
+        :param path: _description_
+        :type path: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         with open(path, "rb") as fp:
             return dill.load(fp)
 
     # -------------------------------------------------------------------------
-    # Utils 
+    # Utils
     # -------------------------------------------------------------------------
 
     def create_pgt(self):
+        """
+        
+
+        :return: _description_
+        :rtype: _type_
+        """
         return wrinkle_remover(path=self._target, landmarks=self.wrinkle_region)
-    
+
 
     def invert(
-        self, invertion_iteration: int = 0, 
+        self, invertion_iteration: int = 0,
         loss_function: Callable = None,
-        initial_latent_function: Callable = None, 
+        initial_latent_function: Callable = None,
         initial_latent_function_kwargs: Dict = None,
         loss_argues: List[Literal["syn_image", "image", "latent_space"]] = ["syn_image", "image"],
-        gradient_optimizer: torch.optim.Optimizer = torch.optim.Adam, 
+        gradient_optimizer: torch.optim.Optimizer = torch.optim.Adam,
         opt_args: Dict = {},
-        learning_rate: float = 0.1, other_optimize_param: Dict = None,
-        return_pivot: bool = False
+        learning_rate: float = 0.1, other_optimize_param: Dict = None
     ):
         get_latent = lambda img_h, img, lat, lat_h: lat
 
@@ -315,41 +379,89 @@ class PivotalTuningEdition:
 
     def tune(
         self, num_steps: int = 350, learning_rate: int = 3e-4,
-        gradient_optimizer: torch.optim.Optimizer = torch.optim.Adam, 
-        opt_args: Dict = {}, lambda_space_reg=0.2, features_fn="Haar", 
-        color_space="RGB", lambda_low_level_features=1/100, progressive=False,
+        gradient_optimizer: torch.optim.Optimizer = torch.optim.Adam,
+        opt_args: Dict = {}, lambda_low_level_features=1/100, progressive=False,
         negative_example=None
     ):
+        """
+        
+
+        :param num_steps: _description_, defaults to 350
+        :type num_steps: int, optional
+        :param learning_rate: _description_, defaults to 3e-4
+        :type learning_rate: int, optional
+        :param gradient_optimizer: _description_, defaults to torch.optim.Adam
+        :type gradient_optimizer: torch.optim.Optimizer, optional
+        :param opt_args: _description_, defaults to {}
+        :type opt_args: Dict, optional
+        :param lambda_space_reg: _description_, defaults to 0.2
+        :type lambda_space_reg: float, optional
+        :param features_fn: _description_, defaults to "Haar"
+        :type features_fn: str, optional
+        :param color_space: _description_, defaults to "RGB"
+        :type color_space: str, optional
+        :param lambda_low_level_features: _description_, defaults to 1/100
+        :type lambda_low_level_features: _type_, optional
+        :param progressive: _description_, defaults to False
+        :type progressive: bool, optional
+        :param negative_example: _description_, defaults to None
+        :type negative_example: _type_, optional
+        """
         _, self._generator_pti = pivotal_tuning(
             G=self._generator, w_pivot=self._pivot, target=self._target,
             device=self._device, num_steps=num_steps, learning_rate=learning_rate,
             generator_kwargs=self._generator_kwargs, space_modifier=self._space_modifier,
-            gradient_optimizer=gradient_optimizer, opt_args=opt_args, lambda_space_reg=lambda_space_reg,
-            features_fn=features_fn, color_space=color_space, 
+            gradient_optimizer=gradient_optimizer, opt_args=opt_args,
             lambda_low_level_features=lambda_low_level_features, progressive=progressive,
             negative_example=negative_example
         )
 
 
     def _h_stack_images(self, images: List[np.array]):
+        """
+        
+
+        :param images: _description_
+        :type images: List[np.array]
+        :return: _description_
+        :rtype: _type_
+        """
         dst = Image.new('RGB', (images[0].width * len(images), images[0].height))
 
         for index, img in enumerate(images):
             dst.paste(img, (img.width * index, 0))
 
         return dst
-    
+
 
     def _v_stack_images(self, images: List[np.array]):
+        """
+        
+
+        :param images: _description_
+        :type images: List[np.array]
+        :return: _description_
+        :rtype: _type_
+        """
         dst = Image.new('RGB', (images[0].width, images[0].height * len(images)))
 
         for index, img in enumerate(images):
             dst.paste(img, (0, img.height * index))
 
         return dst
-    
+
 
     def _tensor_to_pil(self, tensor: torch.Tensor, text: str = None):
+        """
+        
+
+        :param tensor: _description_
+        :type tensor: torch.Tensor
+        :param text: _description_, defaults to None
+        :type text: str, optional
+        :return: _description_
+        :rtype: _type_
+        """
         img = (tensor.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)
         img = Image.fromarray(img[0].cpu().numpy(), 'RGB')
 
@@ -361,30 +473,54 @@ class PivotalTuningEdition:
 
 
     def save_exemples(self, input_gen, path, w=None):
+        """
+        
+
+        :param input_gen: _description_
+        :type input_gen: _type_
+        :param path: _description_
+        :type path: _type_
+        :param w: _description_, defaults to None
+        :type w: _type_, optional
+        """
         pairs = []
 
         for i in range(5):
             latent, c = input_gen[0](), input_gen[1]()
             if w is not None:
-                latent = self._space_modifier(torch.from_numpy(np.load(w[i])).to(self._device))
+                latent = self._space_modifier(torch.from_numpy(np.load(w[i])).to(self._device)) # pylint: disable=E1101
 
             synth = self._tensor_to_pil(self._generator_pti(latent, c, **self._generator_kwargs))
             synth_dir = self._tensor_to_pil(
                 self._generator_pti(latent + self._direction, c, **self._generator_kwargs)
             )
             pairs += [self._h_stack_images([synth, synth_dir])]
-        
+
         self._v_stack_images(pairs).save(path)
-            
+
 
     def synth_direction(self, w, pca=None, strength=1, dry: bool = False):
+        """
+        
+
+        :param w: _description_
+        :type w: _type_
+        :param pca: _description_, defaults to None
+        :type pca: _type_, optional
+        :param strength: _description_, defaults to 1
+        :type strength: int, optional
+        :param dry: _description_, defaults to False
+        :type dry: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """
 
         if pca is None:
             pca = PCA(512)
             pca.fit([
                 self._generator.mapping(
-                    torch.from_numpy(np.random.randn(1, 512)).cuda(), 
-                    torch.zeros([1,0], device="cuda")
+                    torch.from_numpy(np.random.randn(1, 512)).cuda(), # pylint: disable=E1101
+                    torch.zeros([1,0], device="cuda") # pylint: disable=E1101
                 ).detach().cpu().numpy()[0, 0, :] 
                 for _ in range(10000)
             ])
@@ -396,7 +532,9 @@ class PivotalTuningEdition:
                 w = w.unsqueeze(0)
             w_transform = pca.transform([w.detach().cpu().numpy()[0, 0, :]])
             w_transform += self._direction * strength
-            pseudo_pivot = torch.from_numpy(pca.inverse_transform(w_transform)).cuda().requires_grad_(False)
+            pseudo_pivot = torch.from_numpy( # pylint: disable=E1101
+                pca.inverse_transform(w_transform)
+            ).cuda().requires_grad_(False)
         else:
             pseudo_pivot = None
 
@@ -404,12 +542,12 @@ class PivotalTuningEdition:
 
 
     # -------------------------------------------------------------------------
-    # PTI 
+    # PTI
     # -------------------------------------------------------------------------
 
 
     def synthethise(
-        self, 
+        self,
         # Invertion params
         invertion_iteration: int = 0, 
         loss_function: Callable = None,
@@ -425,10 +563,7 @@ class PivotalTuningEdition:
         # Tune params
         tuning_iteration: int = 1500,
         learning_rate_tuning: float = 3e-4,
-        lambda_space_reg=0.2,
         tune: bool = True,
-        features_fn='Gabor',
-        color_space='RGB',
         lambda_low_level_features=1/100,
         progressive=False,
         negative_example=None
@@ -446,23 +581,22 @@ class PivotalTuningEdition:
             self.tune(
                 num_steps=tuning_iteration, learning_rate=learning_rate_tuning,
                 gradient_optimizer=tune_optimizer, opt_args=tune_opt_args,
-                lambda_space_reg=lambda_space_reg, features_fn=features_fn, 
-                color_space=color_space, lambda_low_level_features=lambda_low_level_features,
+                lambda_low_level_features=lambda_low_level_features,
                 progressive=progressive, negative_example=negative_example
             )
 
 
     # -------------------------------------------------------------------------
-    # PTE 
+    # PTE
     # -------------------------------------------------------------------------
 
 
     def synthethise_with_directions(
-        self, 
+        self,
         pseudo_target: Union[str, Image.Image, np.array, torch.Tensor, None],
         target_wrinkle: Union[str, Image.Image, np.array, torch.Tensor, None] = None,
         # Invertion params
-        invertion_iteration: int = 0, 
+        invertion_iteration: int = 0,
         loss_function: Callable = None,
         initial_latent_function: Callable = None, 
         initial_latent_function_kwargs: Dict = None,
@@ -476,12 +610,11 @@ class PivotalTuningEdition:
         # Tune params
         tuning_iteration: int = 1500,
         learning_rate_tuning: float = 3e-4,
-        lambda_space_reg=0.2,
-        tune: bool = True, 
+        tune: bool = True,
         direction_type: Literal["Double_Invertion", "PCA", "Random", "Random_Local", "Chosen_Direction"] = "PCA",
         direction: Union[torch.Tensor, np.array] = None
     ):
-        
+
         self.invert(
             invertion_iteration=invertion_iteration, loss_function=loss_function,
             initial_latent_function=initial_latent_function,
@@ -501,34 +634,36 @@ class PivotalTuningEdition:
                 initial_latent_function=self._pivot.clone().detach(),
                 device=self._device, generator_kwargs=self._generator_kwargs,
                 space_modifier=self._space_modifier, loss_argues=loss_argues,
-                gradient_optimizer=gradient_optimizer, opt_args=opt_args, 
+                gradient_optimizer=gradient_optimizer, opt_args=opt_args,
                 learning_rate=learning_rate_invertion,
                 other_optimize_param=other_optimize_param,
                 returned_information=get_latent
             )
             self._direction = self._pivot - pseudo_pivot
         elif direction_type == "Random_Local":
-            self._direction = torch.rand_like(self._pivot, device=self._pivot.device) - 0.5
-            self._direction *= (5 * self._direction.size()[1]) / torch.abs(self._direction).sum()
+            self._direction = torch.rand_like(self._pivot, device=self._pivot.device) - 0.5  # pylint: disable=E1101
+            self._direction *= (5 * self._direction.size()[1]) / torch.abs(self._direction).sum()  # pylint: disable=E1101
             self._direction = self._direction.detach().requires_grad_(False)
             pseudo_pivot = self._pivot - self._direction
         elif direction_type == "Random_Local":
-            self._direction = torch.rand_like(self._pivot, device=self._pivot.device)
+            self._direction = torch.rand_like(self._pivot, device=self._pivot.device)  # pylint: disable=E1101
             self._direction = self._direction.detach().requires_grad_(False)
             pseudo_pivot = self._pivot - self._direction
         elif direction_type == "PCA":
             pca = PCA(512)
             pca.fit([
                 self._generator.mapping(
-                    torch.from_numpy(np.random.randn(1, 512)).cuda(), 
-                    torch.zeros([1,0], device="cuda")
-                ).detach().cpu().numpy()[0, 0, :] 
+                    torch.from_numpy(np.random.randn(1, 512)).cuda(), # pylint: disable=E1101
+                    torch.zeros([1,0], device="cuda")  # pylint: disable=E1101
+                ).detach().cpu().numpy()[0, 0, :]
                 for _ in range(10000)
             ])
 
             w_transform = pca.transform([self._pivot.detach().cpu().numpy()[0, 0, :]])
             w_transform += [0] * 504 + np.random.randn(8).tolist()
-            pseudo_pivot = torch.from_numpy(pca.inverse_transform(w_transform)).cuda().requires_grad_(False)
+            pseudo_pivot = torch.from_numpy( # pylint: disable=E1101
+                pca.inverse_transform(w_transform)
+            ).cuda().requires_grad_(False)
 
             self._direction = self._pivot - pseudo_pivot
         elif direction_type == "Chosen_Direction":
@@ -552,42 +687,63 @@ class PivotalTuningEdition:
                 generator_kwargs=self._generator_kwargs, 
                 space_modifier=self._space_modifier,
                 gradient_optimizer=tune_optimizer, opt_args=tune_opt_args, 
-                lambda_space_reg=lambda_space_reg, wrinkle_region=self.wrinkle_region,
-                wrinkle_targets=target_wrinkle
+                wrinkle_region=self.wrinkle_region, wrinkle_targets=target_wrinkle
             )
 
 
     # -------------------------------------------------------------------------
-    # Evaluation 
+    # Evaluation
     # -------------------------------------------------------------------------
 
     def edit_pivot(self, alpha):
+        """
+        
 
+        :param alpha: _description_
+        :type alpha: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         if not isinstance(alpha, torch.Tensor):
             alpha = torch.Tensor([alpha]).cuda()
 
         return self._tensor_to_pil(
             self._generator_pti(
-                self._space_modifier(self._pivot + torch.sum(
+                self._space_modifier(self._pivot + torch.sum( # pylint: disable=E1101
                     alpha[:, None, None].repeat(1, 1, 512) * self._direction, dim=0
-                ).unsqueeze(0)), torch.zeros(1, 0, device="cuda"), **self._generator_kwargs,
+                ).unsqueeze(0)), torch.zeros(1, 0, device="cuda"), **self._generator_kwargs, # pylint: disable=E1101
             )
         )
 
     def mse_full(self):
-        original_image = cv2.imread(self._target)
+        """
+        
 
-        c = torch.zeros([1, 0], device=self._device)
+        :return: _description_
+        :rtype: _type_
+        """
+        original_image = cv2.imread(self._target) # pylint: disable=E1101
+
+        c = torch.zeros([1, 0], device=self._device) # pylint: disable=E1101
         synth = self._generator_pti(self._space_modifier(self._pivot), c, **self._generator_kwargs)
-        synth = cv2.cvtColor((synth.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8).detach().cpu().numpy()[0], cv2.COLOR_RGB2BGR)
+        synth = cv2.cvtColor(  # pylint: disable=E1101
+            (synth.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8).detach().cpu().numpy()[0],
+            cv2.COLOR_RGB2BGR  # pylint: disable=E1101
+        )
 
         return np.sqrt(np.square(original_image - synth).mean())
-    
+
 
     def identity_loss(self):
+        """
+        
+
+        :return: _description_
+        :rtype: _type_
+        """
         original_image = Image.open(self._target)
 
-        c = torch.zeros([1, 0], device=self._device)
+        c = torch.zeros([1, 0], device=self._device) # pylint: disable=E1101
         synth_image = self._tensor_to_pil(self._generator_pti(self._space_modifier(self._pivot), c, **self._generator_kwargs))
 
         mtcnn = facenet_pytorch.MTCNN(image_size=original_image.size[0])
@@ -595,60 +751,56 @@ class PivotalTuningEdition:
         crop_synth_image = mtcnn(synth_image)
 
         resnet = facenet_pytorch.InceptionResnetV1(pretrained='vggface2').eval().to("cuda")
-        original_embedding = resnet(crop_original_image.unsqueeze(0).to("cuda"))
-        synth_embedding = resnet(crop_synth_image.unsqueeze(0).to("cuda"))
+        original_embedding = resnet(crop_original_image.unsqueeze(0).to("cuda")) # pylint: disable=E1102
+        synth_embedding = resnet(crop_synth_image.unsqueeze(0).to("cuda")) # pylint: disable=E1102
 
         return torch.nn.functional.mse_loss(original_embedding, synth_embedding).detach().item()
 
 
     def global_variations(self):
-        c = torch.zeros([1, 0], device=self._device)
+        """
+        
 
-        synth_dir1 = self._generator_pti(self._space_modifier(self._pivot + self._direction), c, **self._generator_kwargs)
-        synth_dir1 = cv2.cvtColor((synth_dir1.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8).detach().cpu().numpy()[0], cv2.COLOR_RGB2BGR)
+        :return: _description_
+        :rtype: _type_
+        """
+        c = torch.zeros([1, 0], device=self._device) # pylint: disable=E1101
+
+        synth_dir1 = self._generator_pti(
+            self._space_modifier(self._pivot + self._direction), c, **self._generator_kwargs
+        )
+        synth_dir1 = cv2.cvtColor( # pylint: disable=E1101
+            (synth_dir1.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8).detach().cpu().numpy()[0],
+            cv2.COLOR_RGB2BGR # pylint: disable=E1101
+        )
 
         synth_dir2 = self._generator_pti(self._space_modifier(self._pivot - self._direction), c, **self._generator_kwargs)
-        synth_dir2 = cv2.cvtColor((synth_dir2.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8).detach().cpu().numpy()[0], cv2.COLOR_RGB2BGR)
+        synth_dir2 = cv2.cvtColor( # pylint: disable=E1101
+            (synth_dir2.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8).detach().cpu().numpy()[0],
+            cv2.COLOR_RGB2BGR # pylint: disable=E1101
+        )
 
         return np.sqrt(np.square(synth_dir1 - synth_dir2).mean())
-    
 
-    def log_frequency_domain(self):
-        original_image = cv2.imread(self._target)
-
-        c = torch.zeros([1, 0], device=self._device)
-        synth = self._generator_pti(self._space_modifier(self._pivot), c, **self._generator_kwargs)
-        synth = cv2.cvtColor((synth.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8).detach().cpu().numpy()[0], cv2.COLOR_RGB2BGR)
-
-        mask = Face(r"C:\Users\Neil\OneDrive - Professional\Documents\Python scripts\These\TheseUtils\target3_wrinkle.png").read_image().get_mask_landmarks("LionWrinkle", LANDMARKS_MEDIAPIPE)
-        lion_mask = np.nonzero(mask)
-        x_min, x_max, y_min, y_max = np.min(lion_mask[0]), np.max(lion_mask[0]), np.min(lion_mask[1]), np.max(lion_mask[1])
-
-        original_fft = np.fft.fft2(original_image)[x_min:x_max, y_min:y_max]
-        synth_fft = np.fft.fft2(synth)[x_min:x_max, y_min:y_max]
-
-        return np.log((1 / np.size(original_image)) * np.square(np.abs(original_fft - synth_fft)).sum() + 1)
-
-
-    def score_results(self):
-        scores = dict()
-
-        scores["MSE"] = self.mse_full()
-        scores["LFD"] = self.log_frequency_domain()
-        scores["Identity"] = self.identity_loss()
-        scores["Global Variations"] = self.global_variations()
-
-        return scores
-    
 
     def show_result(self, save_path: str = None, only_inverted: bool = False):
+        """
+        
+
+        :param save_path: _description_, defaults to None
+        :type save_path: str, optional
+        :param only_inverted: _description_, defaults to False
+        :type only_inverted: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """
 
         if isinstance(self._target, str):
             original_image = Image.open(self._target)
         else:
             original_image = self._target
 
-        c = torch.zeros([1, 0], device=self._device)
+        c = torch.zeros([1, 0], device=self._device) # pylint: disable=E1101
         inverted_image = self._tensor_to_pil(
             self._generator(self._space_modifier(self._pivot), c, **self._generator_kwargs)
         )
@@ -657,7 +809,9 @@ class PivotalTuningEdition:
             img = inverted_image
         elif self._generator_pti is not None:
             tuned_image = self._tensor_to_pil(
-                self._generator_pti(self._space_modifier(self._pivot), c, **self._generator_kwargs), "PTI"
+                self._generator_pti(
+                    self._space_modifier(self._pivot), c, **self._generator_kwargs
+                ), "PTI"
             )
 
             img = self._h_stack_images([original_image, inverted_image, tuned_image])

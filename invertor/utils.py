@@ -1,11 +1,6 @@
-import numpy as np
-import torch
-from PIL import Image
-from torchvision import transforms
-from typing import Any
+from typing import Any, Callable, List, Union
 import re
 import urllib
-import requests
 import hashlib
 import glob
 import os
@@ -13,30 +8,29 @@ import html
 import uuid
 import io
 import tempfile
-import cv2
-
-
-
-from typing import Callable, List, Union
-
+import requests
+import numpy as np
+import torch
+from PIL import Image
+from torchvision import transforms
 
 
 def avg_latent(generator, w_avg_samples=10000):
-    z_samples = np.random.RandomState(123).randn(w_avg_samples, generator.z_dim)
-    w_samples = generator.mapping(torch.from_numpy(z_samples).to("cuda"), None)  # [N, L, C]
+    z_samples = np.random.RandomState(123).randn(w_avg_samples, generator.z_dim) # pylint: disable=E1101
+    w_samples = generator.mapping(torch.from_numpy(z_samples).to("cuda"), None) # pylint: disable=E1101
     w_samples = w_samples[:, :1, :].cpu().numpy().astype(np.float32)       # [N, 1, C]
     w_avg = np.mean(w_samples, axis=0, keepdims=True)      # [1, 1, C]
 
-    return torch.tensor(w_avg, dtype=torch.float32, device="cuda", requires_grad=True) 
+    return torch.tensor(w_avg, dtype=torch.float32, device="cuda", requires_grad=True) # pylint: disable=E1101
 
 
 def read_image(
-    img_invert_path: Union[str, Image.Image], device: Union[str, torch.device] = "auto", 
+    img_invert_path: Union[str, Image.Image], device: Union[str, torch.device] = "auto",
     size=None
 ) -> torch.Tensor:
     
     if isinstance(img_invert_path, List):
-        return torch.cat([read_image(path) for path in img_invert_path], dim=0)
+        return torch.cat([read_image(path) for path in img_invert_path], dim=0) # pylint: disable=E1101
 
     if device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -94,7 +88,9 @@ def save_inversion_result(
 
     if isinstance(returned_information, Callable):
         return returned_information(
-            np.array(loss_history), [Image.fromarray(single_img.cpu().numpy(), 'RGB') for single_img in img],
+            np.array(loss_history), [
+                Image.fromarray(single_img.cpu().numpy(), 'RGB') for single_img in img
+            ],
             latent_space, latent_history
         )
 
@@ -126,7 +122,8 @@ def is_url(obj: Any, allow_file_urls: bool = False) -> bool:
         res = requests.compat.urlparse(requests.compat.urljoin(obj, "/"))
         if not res.scheme or not res.netloc or not "." in res.netloc:
             return False
-    except:
+    except Exception as e:
+        print(e)
         return False
     return True
 
@@ -204,7 +201,7 @@ def open_url(url: str, cache_dir: str = None, num_attempts: int = 10, verbose: b
                     break
             except KeyboardInterrupt:
                 raise
-            except:
+            except Exception:
                 if not attempts_left:
                     if verbose:
                         print(" failed")

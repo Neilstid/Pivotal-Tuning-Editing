@@ -3,28 +3,24 @@ from __future__ import annotations
 from typing import List, Tuple, Union, Any
 from os.path import basename, dirname, realpath, join as path_join, exists as path_exists
 import os
+import warnings as warn
+from pathlib import Path
 from uuid import uuid4
 from copy import copy, deepcopy
 import torch
 
 # Python Libraries
 from cv2 import imread, cvtColor, COLOR_BGR2RGB, resize, imwrite, imshow,\
-    waitKey, circle, putText, FONT_HERSHEY_SIMPLEX, addWeighted, fillPoly, error
+    waitKey, circle, putText, FONT_HERSHEY_SIMPLEX, addWeighted, fillPoly # pylint: disable=E0611
 import cv2
 import dlib
+from scipy.ndimage import binary_dilation, binary_erosion
 import mediapipe as mp
 from numpy import array as np_array, int32, zeros as np_zeros, save as np_save,\
     max as np_max, uint8, where as np_where, min as np_min, abs as np_abs,any as np_any
 import numpy as np
-from numpy.linalg import norm
 import imutils
 from face.facealign import align
-import warnings as warn
-from pathlib import Path
-from scipy.ndimage import binary_dilation, binary_erosion
-
-
-# Modules
 from face.resnet_mask import FaceParser
 
 
@@ -107,8 +103,8 @@ DLIB_DATA_DIR: str = os.environ.get(
     'DLIB_DATA_DIR',
     path_join(dirname(dirname(realpath(__file__))), 'dlib')
 )
-dlib_detector = dlib.get_frontal_face_detector()
-dlib_predictor = dlib.shape_predictor(
+dlib_detector = dlib.get_frontal_face_detector() # pylint: disable=E1101
+dlib_predictor = dlib.shape_predictor( # pylint: disable=E1101
     path_join(DLIB_DATA_DIR, 'shape_predictor_68_face_landmarks.dat')
 )
 
@@ -193,7 +189,7 @@ class Face:
 
         # Read the image and the semantic
         self.image = imread(self.path)
-        self.semantic = imread(self.semantic_path)
+        self.semantic = imread(semantic_path)
 
         # Assert they have the same size
         if self.image.shape[:2] != self.semantic.shape[:2]:
@@ -392,7 +388,8 @@ class Face:
         crop_image: np_array = self.image[int(min_y):int(max_y), int(min_x):int(max_x)]
         try:
             crop_semantic: np_array = self.semantic[int(min_y):int(max_y), int(min_x):int(max_x)]
-        except:
+        except Exception as e:
+            print(e)
             warn.warn("No semantic found. If one, it won't be resized!")
             crop_semantic: np_array = np_array([])
 
@@ -401,7 +398,8 @@ class Face:
             self.image = crop_image
             try:
                 self.semantic = crop_semantic
-            except:
+            except Exception as e:
+                print(e)
                 pass
 
         if return_quad:
@@ -447,8 +445,9 @@ class Face:
         self.image = resize(self.image, size)
 
         try:
-            self.semantic = resize(self.semantic, size, interpolation=cv2.INTER_NEAREST_EXACT)
-        except error:
+            self.semantic = resize(self.semantic, size, interpolation=cv2.INTER_NEAREST_EXACT) # pylint: disable=E1101
+        except Exception as e:
+            print(e)
             warn.warn("Semantic is null and cannot be resize")
 
         return
@@ -640,7 +639,7 @@ class Face:
         empty.image = image
         # Return the empty Face object with the image
         return empty
-    
+
 
     @classmethod
     def from_tensor(cls, image: torch.Tensor) -> Face:
@@ -700,7 +699,7 @@ class Face:
 
         # Every value that is not in the mask will be black
         return self.image * mask_colour.T
-    
+
 
     def get_element_landamrks(
         self, landmarks_points: Union[List[int], str], landmark_model: int = LANDMARKS_DLIB
@@ -856,7 +855,7 @@ class Face:
             img_copy = putText(
                 img_copy, text=str(k), org =(int(x) + radius, int(y) + radius),
                 color=(119, 61, 55), fontFace=FONT_HERSHEY_SIMPLEX,
-                fontScale=0.3 * scale, thickness=1, lineType=cv2.LINE_AA
+                fontScale=0.3 * scale, thickness=1, lineType=cv2.LINE_AA # pylint: disable=E1101
             )
 
         img_copy = imutils.resize(img_copy, width=500)
@@ -902,7 +901,7 @@ class Face:
             img_copy = putText(
                 img_copy, text=str(k), org =(int(x) + radius, int(y) + radius),
                 color=(119, 61, 55), fontFace=FONT_HERSHEY_SIMPLEX,
-                fontScale=0.3 * scale, thickness=1, lineType=cv2.LINE_AA
+                fontScale=0.3 * scale, thickness=1, lineType=cv2.LINE_AA # pylint: disable=E1101
             )
 
         img_copy = imutils.resize(img_copy, width=500)
@@ -925,7 +924,7 @@ class Face:
         """
         elements: list = [self.path, self.image, self.semantic]
         return elements[items]
-    
+
     def __str__(self) -> str:
         return f"Face({os.path.splitext(os.path.basename(self.path))[0]})"
 
@@ -948,7 +947,7 @@ class Face:
         :return: Returns the aligned faces
         :rtype: Face
         """
-        
+    
         landmarks = self.landmark(landmark_model)
         if isinstance(landmarks_points, str):
             landmarks_points = LANDMARKS_REGION[landmarks_points]
@@ -970,7 +969,9 @@ class Face:
 
         # Align the faces
         # Skip the first one since it's the reference face, so its the same as the original
-        aligned_faces: List[np_array] = align(images=faces, all_points=landmarks, landmark_model=landmark_model_align, skip_ref=True)
+        aligned_faces: List[np_array] = align(
+            images=faces, all_points=landmarks, landmark_model=landmark_model_align, skip_ref=True
+        )
 
         # If we actualy need to update the faces object
         if self_update:
@@ -1059,14 +1060,14 @@ class Face:
 
             margin = 0 if min_y - delta >= 0 else abs(min_y - delta)
             min_y = max([0, min_y - delta])
-            
+
             side_y = side + margin
         elif side == max_w or side == w:
             delta = (side - h) // 2
 
             margin = 0 if min_x - delta >= 0 else abs(min_x - delta)
             min_x = max([0, min_x - delta])
-            
+
             side_x = side + margin
 
         # Apply the mask
@@ -1138,7 +1139,6 @@ class Face:
             mask = fillPoly(mask, pts=[landmarks[landmarks_points]], color=1)
 
         return mask
-    
 
 
     def get_mask_landmarks_convex(
@@ -1170,8 +1170,8 @@ class Face:
                 mask += self.get_mask_landmarks_convex(
                     landmarks_points=sub_set, landmark_model=landmark_model
                 )
-        else: 
-            pt = cv2.convexHull(np.array([landmarks[landmarks_points]]).astype(np.int32))[:, 0, :]
+        else:
+            pt = cv2.convexHull(np.array([landmarks[landmarks_points]]).astype(np.int32))[:, 0, :] # pylint: disable=E1101
             # Create the polly to keep
             mask = fillPoly(mask, pts=[pt], color=1)
 
@@ -1271,7 +1271,7 @@ class Face:
         return mask.astype("uint8")
 
 
-    def mask_difference(self, other: Face, threshold: int = 25, closing_iterations: int = 3) -> np_array:
+    def mask_difference(self, other: Face, threshold: int = 25) -> np_array:
         """
         Get difference between faces
 
@@ -1296,7 +1296,7 @@ class Face:
             prev_threshold_array: np_array = copy(threshold_array)
             threshold_array: np_array = binary_dilation(input=threshold_array, iterations=3).astype(threshold_array.dtype)
             threshold_array: np_array = binary_erosion(input=threshold_array, iterations=3).astype(threshold_array.dtype)
-        
+
         return threshold_array.astype("uint8")
 
 
@@ -1320,7 +1320,7 @@ class Face:
 
         ymin, ymax = int(np_min(np.hstack((lm[:, 0], ylm)))), int(np_max(np.hstack((lm[:, 0], ylm))))
         xmin, xmax = int(np_min(np.hstack((lm[:, 1], xlm)))), int(np_max(np.hstack((lm[:, 1], xlm))))
-        
+
         img = copy(self.image)[xmin:xmax, ymin:ymax]
         height = xmax - xmin
         width = ymax - ymin
@@ -1328,7 +1328,7 @@ class Face:
         hpad = max((width - height) // 2, 0)
         wpad = max((height - width) // 2, 0)
 
-        img = cv2.copyMakeBorder(img, hpad, hpad, wpad, wpad, cv2.BORDER_CONSTANT)
+        img = cv2.copyMakeBorder(img, hpad, hpad, wpad, wpad, cv2.BORDER_CONSTANT) # pylint: disable=E1101
         # h, w, c = img.shape
 
         return img

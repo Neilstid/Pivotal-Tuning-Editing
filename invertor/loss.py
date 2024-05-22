@@ -1,31 +1,32 @@
+from typing import List, Union
 import numpy as np
 from scipy.spatial.distance import cdist
 import torch
-from invertor.utils import open_url
-from typing import List, Union
 import torch.nn.functional as F
+from invertor.utils import open_url
 
-PREWITT_KERNEL_X: torch.Tensor = torch.from_numpy(np.array([
+
+PREWITT_KERNEL_X: torch.Tensor = torch.from_numpy(np.array([ # pylint: disable=E1101
     [-1, 0, 1],
     [-1, 0, 1],
     [-1, 0, 1]
 ]))
 
 
-LOW_LEVEL_KERNEL_X: torch.Tensor = torch.from_numpy(np.array([
+LOW_LEVEL_KERNEL_X: torch.Tensor = torch.from_numpy(np.array([ # pylint: disable=E1101
     [-1, 2, -1],
     [-1, 2, -1],
     [-1, 2, -1]
 ]))
 
 
-PREWITT_KERNEL_Y: torch.Tensor = torch.from_numpy(np.array([
+PREWITT_KERNEL_Y: torch.Tensor = torch.from_numpy(np.array([ # pylint: disable=E1101
     [-1, -1, -1],
     [0, 0, 0],
     [1, 1, 1]
 ]))
 
-LOW_LEVEL_KERNEL_Y: torch.Tensor = torch.from_numpy(np.array([
+LOW_LEVEL_KERNEL_Y: torch.Tensor = torch.from_numpy(np.array([ # pylint: disable=E1101
     [-1, -1, -1],
     [2, 2, 2],
     [-1, -1, -1]
@@ -77,7 +78,7 @@ class InversionLossWithSpace(torch.nn.Module):
         # Initialize the loss -----------------------------------------------------
         # Perceptual loss initialise object
         # MSE loss object
-        self.__MSE_loss = torch.nn.MSELoss(reduction="mean")
+        self.__MSE_loss = torch.nn.MSELoss(reduction="mean") 
 
     def forward(
         self, x: torch.Tensor, y: torch.Tensor, x_latent: torch.Tensor
@@ -85,7 +86,7 @@ class InversionLossWithSpace(torch.nn.Module):
         if isinstance(x_latent, torch.Tensor):
             pass
         elif isinstance(x_latent[0], torch.Tensor):
-            x_latent = torch.Tensor(torch.cat([t.squeeze(0) for t in x_latent]))
+            x_latent = torch.Tensor(torch.cat([t.squeeze(0) for t in x_latent])) # pylint: disable=E1101
 
         dist_to_center = self.__MSE_loss(self.__mean_latents, x_latent.flatten())
         penalty = dist_to_center * self.__lmbda if dist_to_center >= self.__max_distance else 0
