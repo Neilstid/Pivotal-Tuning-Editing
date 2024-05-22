@@ -12,8 +12,8 @@ import os
 import numpy as np
 import torch
 
-from .. import custom_ops
-from .. import misc
+from generator.stylegan3.torch_utils import custom_ops
+from generator.stylegan3.torch_utils import misc
 from . import conv2d_gradfix
 
 #----------------------------------------------------------------------------
@@ -91,7 +91,7 @@ def setup_filter(f, device=torch.device('cpu'), normalize=True, flip_filter=Fals
     # Validate.
     if f is None:
         f = 1
-    f = torch.as_tensor(f, dtype=torch.float32)
+    f = torch.as_tensor(f, dtype=torch.float32) # pylint: disable=E1101
     assert f.ndim in [0, 1, 2]
     assert f.numel() > 0
     if f.ndim == 0:
@@ -170,7 +170,7 @@ def _upfirdn2d_ref(x, f, up=1, down=1, padding=0, flip_filter=False, gain=1):
     # Validate arguments.
     assert isinstance(x, torch.Tensor) and x.ndim == 4
     if f is None:
-        f = torch.ones([1, 1], dtype=torch.float32, device=x.device)
+        f = torch.ones([1, 1], dtype=torch.float32, device=x.device) # pylint: disable=E1101
     assert isinstance(f, torch.Tensor) and f.ndim in [1, 2]
     assert f.dtype == torch.float32 and not f.requires_grad
     batch_size, num_channels, in_height, in_width = x.shape
@@ -185,11 +185,11 @@ def _upfirdn2d_ref(x, f, up=1, down=1, padding=0, flip_filter=False, gain=1):
 
     # Upsample by inserting zeros.
     x = x.reshape([batch_size, num_channels, in_height, 1, in_width, 1])
-    x = torch.nn.functional.pad(x, [0, upx - 1, 0, 0, 0, upy - 1])
+    x = torch.nn.functional.pad(x, [0, upx - 1, 0, 0, 0, upy - 1]) # pylint: disable=E1102
     x = x.reshape([batch_size, num_channels, in_height * upy, in_width * upx])
 
     # Pad or crop.
-    x = torch.nn.functional.pad(x, [max(padx0, 0), max(padx1, 0), max(pady0, 0), max(pady1, 0)])
+    x = torch.nn.functional.pad(x, [max(padx0, 0), max(padx1, 0), max(pady0, 0), max(pady1, 0)]) # pylint: disable=E1102
     x = x[:, :, max(-pady0, 0) : x.shape[2] - max(-pady1, 0), max(-padx0, 0) : x.shape[3] - max(-padx1, 0)]
 
     # Setup filter.
@@ -233,7 +233,7 @@ def _upfirdn2d_cuda(up=1, down=1, padding=0, flip_filter=False, gain=1):
         def forward(ctx, x, f): # pylint: disable=arguments-differ
             assert isinstance(x, torch.Tensor) and x.ndim == 4
             if f is None:
-                f = torch.ones([1, 1], dtype=torch.float32, device=x.device)
+                f = torch.ones([1, 1], dtype=torch.float32, device=x.device) # pylint: disable=E1101
             if f.ndim == 1 and f.shape[0] == 1:
                 f = f.square().unsqueeze(0) # Convert separable-1 into full-1x1.
             assert isinstance(f, torch.Tensor) and f.ndim in [1, 2]

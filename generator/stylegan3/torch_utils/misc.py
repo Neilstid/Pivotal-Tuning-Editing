@@ -33,9 +33,9 @@ def constant(value, shape=None, dtype=None, device=None, memory_format=None):
     key = (value.shape, value.dtype, value.tobytes(), shape, dtype, device, memory_format)
     tensor = _constant_cache.get(key, None)
     if tensor is None:
-        tensor = torch.as_tensor(value.copy(), dtype=dtype, device=device)
+        tensor = torch.as_tensor(value.copy(), dtype=dtype, device=device) # pylint: disable=E1101
         if shape is not None:
-            tensor, _ = torch.broadcast_tensors(tensor, torch.empty(shape))
+            tensor, _ = torch.broadcast_tensors(tensor, torch.empty(shape)) # pylint: disable=E1101
         tensor = tensor.contiguous(memory_format=memory_format)
         _constant_cache[key] = tensor
     return tensor
@@ -53,7 +53,7 @@ except AttributeError:
         if neginf is None:
             neginf = torch.finfo(input.dtype).min
         assert nan == 0
-        return torch.clamp(input.unsqueeze(0).nansum(0), min=neginf, max=posinf, out=out)
+        return torch.clamp(input.unsqueeze(0).nansum(0), min=neginf, max=posinf, out=out) # pylint: disable=E1101
 
 #----------------------------------------------------------------------------
 # Symbolic assert.
@@ -61,7 +61,7 @@ except AttributeError:
 try:
     symbolic_assert = torch._assert # 1.8.0a0 # pylint: disable=protected-access
 except AttributeError:
-    symbolic_assert = torch.Assert # 1.7.0
+    symbolic_assert = torch.Assert # pylint: disable=E1101 # 1.7.0
 
 #----------------------------------------------------------------------------
 # Context manager to temporarily suppress known warnings in torch.jit.trace().
@@ -87,10 +87,10 @@ def assert_shape(tensor, ref_shape):
             pass
         elif isinstance(ref_size, torch.Tensor):
             with suppress_tracer_warnings(): # as_tensor results are registered as constants
-                symbolic_assert(torch.equal(torch.as_tensor(size), ref_size), f'Wrong size for dimension {idx}')
+                symbolic_assert(torch.equal(torch.as_tensor(size), ref_size), f'Wrong size for dimension {idx}') # pylint: disable=E1101
         elif isinstance(size, torch.Tensor):
             with suppress_tracer_warnings(): # as_tensor results are registered as constants
-                symbolic_assert(torch.equal(size, torch.as_tensor(ref_size)), f'Wrong size for dimension {idx}: expected {ref_size}')
+                symbolic_assert(torch.equal(size, torch.as_tensor(ref_size)), f'Wrong size for dimension {idx}: expected {ref_size}') # pylint: disable=E1101
         elif size != ref_size:
             raise AssertionError(f'Wrong size for dimension {idx}: got {size}, expected {ref_size}')
 
@@ -127,7 +127,7 @@ class InfiniteSampler(torch.utils.data.Sampler):
         rnd = None
         window = 0
         if self.shuffle:
-            rnd = np.random.RandomState(self.seed)
+            rnd = np.random.RandomState(self.seed) # pylint: disable=E1101
             rnd.shuffle(order)
             window = int(np.rint(order.size * self.window_size))
 

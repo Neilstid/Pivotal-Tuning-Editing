@@ -37,12 +37,12 @@ def no_weight_gradients(disable=True):
 def conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
     if _should_use_custom_op(input):
         return _conv2d_gradfix(transpose=False, weight_shape=weight.shape, stride=stride, padding=padding, output_padding=0, dilation=dilation, groups=groups).apply(input, weight, bias)
-    return torch.nn.functional.conv2d(input=input, weight=weight, bias=bias, stride=stride, padding=padding, dilation=dilation, groups=groups)
+    return torch.nn.functional.conv2d(input=input, weight=weight, bias=bias, stride=stride, padding=padding, dilation=dilation, groups=groups) # pylint: disable=E1102
 
 def conv_transpose2d(input, weight, bias=None, stride=1, padding=0, output_padding=0, groups=1, dilation=1):
     if _should_use_custom_op(input):
         return _conv2d_gradfix(transpose=True, weight_shape=weight.shape, stride=stride, padding=padding, output_padding=output_padding, groups=groups, dilation=dilation).apply(input, weight, bias)
-    return torch.nn.functional.conv_transpose2d(input=input, weight=weight, bias=bias, stride=stride, padding=padding, output_padding=output_padding, groups=groups, dilation=dilation)
+    return torch.nn.functional.conv_transpose2d(input=input, weight=weight, bias=bias, stride=stride, padding=padding, output_padding=output_padding, groups=groups, dilation=dilation) # pylint: disable=E1102
 
 #----------------------------------------------------------------------------
 
@@ -66,7 +66,7 @@ def _tuple_of_ints(xs, ndim):
 #----------------------------------------------------------------------------
 
 _conv2d_gradfix_cache = dict()
-_null_tensor = torch.empty([0])
+_null_tensor = torch.empty([0]) # pylint: disable=E1101
 
 def _conv2d_gradfix(transpose, weight_shape, stride, padding, output_padding, dilation, groups):
     # Parse arguments.
@@ -128,8 +128,8 @@ def _conv2d_gradfix(transpose, weight_shape, stride, padding, output_padding, di
 
             # General case => cuDNN.
             if transpose:
-                return torch.nn.functional.conv_transpose2d(input=input, weight=weight, bias=bias, output_padding=output_padding, **common_kwargs)
-            return torch.nn.functional.conv2d(input=input, weight=weight, bias=bias, **common_kwargs)
+                return torch.nn.functional.conv_transpose2d(input=input, weight=weight, bias=bias, output_padding=output_padding, **common_kwargs) # pylint: disable=E1102
+            return torch.nn.functional.conv2d(input=input, weight=weight, bias=bias, **common_kwargs) # pylint: disable=E1102
 
         @staticmethod
         def backward(ctx, grad_output):
@@ -146,7 +146,7 @@ def _conv2d_gradfix(transpose, weight_shape, stride, padding, output_padding, di
                 assert grad_input.shape == input_shape
 
             if ctx.needs_input_grad[1] and not weight_gradients_disabled:
-                grad_weight = Conv2dGradWeight.apply(grad_output, input)
+                grad_weight = Conv2dGradWeight.apply(grad_output, input) # pylint: disable=E1101
                 assert grad_weight.shape == weight_shape
 
             if ctx.needs_input_grad[2]:
@@ -175,7 +175,7 @@ def _conv2d_gradfix(transpose, weight_shape, stride, padding, output_padding, di
             # General case => cuDNN.
             name = 'aten::cudnn_convolution_transpose_backward_weight' if transpose else 'aten::cudnn_convolution_backward_weight'
             flags = [torch.backends.cudnn.benchmark, torch.backends.cudnn.deterministic, torch.backends.cudnn.allow_tf32]
-            return torch._C._jit_get_operation(name)(weight_shape, grad_output, input, padding, stride, dilation, groups, *flags)
+            return torch._C._jit_get_operation(name)(weight_shape, grad_output, input, padding, stride, dilation, groups, *flags) # pylint: disable=E1102
 
         @staticmethod
         def backward(ctx, grad2_grad_weight):
@@ -186,7 +186,7 @@ def _conv2d_gradfix(transpose, weight_shape, stride, padding, output_padding, di
             grad2_input = None
 
             if ctx.needs_input_grad[0]:
-                grad2_grad_output = Conv2d.apply(input, grad2_grad_weight, None)
+                grad2_grad_output = Conv2d.apply(input, grad2_grad_weight, None) # pylint: disable=E1101
                 assert grad2_grad_output.shape == grad_output_shape
 
             if ctx.needs_input_grad[1]:

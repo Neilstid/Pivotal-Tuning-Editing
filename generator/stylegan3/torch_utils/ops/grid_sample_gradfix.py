@@ -49,7 +49,7 @@ class _GridSample2dForward(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         input, grid = ctx.saved_tensors
-        grad_input, grad_grid = _GridSample2dBackward.apply(grad_output, input, grid)
+        grad_input, grad_grid = _GridSample2dBackward.apply(grad_output, input, grid) # pylint: disable=E1101
         return grad_input, grad_grid
 
 #----------------------------------------------------------------------------
@@ -60,9 +60,9 @@ class _GridSample2dBackward(torch.autograd.Function):
         op = torch._C._jit_get_operation('aten::grid_sampler_2d_backward')
         if _use_pytorch_1_11_api:
             output_mask = (ctx.needs_input_grad[1], ctx.needs_input_grad[2])
-            grad_input, grad_grid = op(grad_output, input, grid, 0, 0, False, output_mask)
+            grad_input, grad_grid = op(grad_output, input, grid, 0, 0, False, output_mask) # pylint: disable=E1102
         else:
-            grad_input, grad_grid = op(grad_output, input, grid, 0, 0, False)
+            grad_input, grad_grid = op(grad_output, input, grid, 0, 0, False) # pylint: disable=E1102
         ctx.save_for_backward(grid)
         return grad_input, grad_grid
 
@@ -75,7 +75,7 @@ class _GridSample2dBackward(torch.autograd.Function):
         grad2_grid = None
 
         if ctx.needs_input_grad[0]:
-            grad2_grad_output = _GridSample2dForward.apply(grad2_grad_input, grid)
+            grad2_grad_output = _GridSample2dForward.apply(grad2_grad_input, grid) # pylint: disable=E1101
 
         assert not ctx.needs_input_grad[2]
         return grad2_grad_output, grad2_input, grad2_grid

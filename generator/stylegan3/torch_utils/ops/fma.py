@@ -13,14 +13,14 @@ import torch
 #----------------------------------------------------------------------------
 
 def fma(a, b, c): # => a * b + c
-    return _FusedMultiplyAdd.apply(a, b, c)
+    return _FusedMultiplyAdd.apply(a, b, c) # pylint: disable=E1101
 
 #----------------------------------------------------------------------------
 
 class _FusedMultiplyAdd(torch.autograd.Function): # a * b + c
     @staticmethod
     def forward(ctx, a, b, c): # pylint: disable=arguments-differ
-        out = torch.addcmul(c, a, b)
+        out = torch.addcmul(c, a, b) # pylint: disable=E1101
         ctx.save_for_backward(a, b)
         ctx.c_shape = c.shape
         return out

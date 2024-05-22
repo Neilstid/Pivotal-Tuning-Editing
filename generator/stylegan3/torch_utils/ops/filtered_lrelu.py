@@ -11,8 +11,8 @@ import numpy as np
 import torch
 import warnings
 
-from .. import custom_ops
-from .. import misc
+from generator.stylegan3.torch_utils import custom_ops
+from generator.stylegan3.torch_utils import misc
 from . import upfirdn2d
 from . import bias_act
 
@@ -182,9 +182,9 @@ def _filtered_lrelu_cuda(up=1, down=1, padding=0, gain=np.sqrt(2), slope=0.2, cl
 
             # Replace empty up/downsample kernels with full 1x1 kernels (faster than separable).
             if fu is None:
-                fu = torch.ones([1, 1], dtype=torch.float32, device=x.device)
+                fu = torch.ones([1, 1], dtype=torch.float32, device=x.device) # pylint: disable=E1101
             if fd is None:
-                fd = torch.ones([1, 1], dtype=torch.float32, device=x.device)
+                fd = torch.ones([1, 1], dtype=torch.float32, device=x.device) # pylint: disable=E1101
             assert 1 <= fu.ndim <= 2
             assert 1 <= fd.ndim <= 2
 
@@ -196,11 +196,11 @@ def _filtered_lrelu_cuda(up=1, down=1, padding=0, gain=np.sqrt(2), slope=0.2, cl
 
             # Missing sign input tensor.
             if si is None:
-                si = torch.empty([0])
+                si = torch.empty([0]) # pylint: disable=E1101
 
             # Missing bias tensor.
             if b is None:
-                b = torch.zeros([x.shape[1]], dtype=x.dtype, device=x.device)
+                b = torch.zeros([x.shape[1]], dtype=x.dtype, device=x.device) # pylint: disable=E1101
 
             # Construct internal sign tensor only if gradients are needed.
             write_signs = (si.numel() == 0) and (x.requires_grad or b.requires_grad)

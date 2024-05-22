@@ -3,7 +3,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
 
 from .resnet import Resnet18
 
@@ -72,11 +71,11 @@ class AttentionRefinementModule(nn.Module):
 
     def forward(self, x):
         feat = self.conv(x)
-        atten = F.avg_pool2d(feat, feat.size()[2:])
+        atten = F.avg_pool2d(feat, feat.size()[2:]) # pylint: disable=E1102
         atten = self.conv_atten(atten)
         atten = self.bn_atten(atten)
         atten = self.sigmoid_atten(atten)
-        out = torch.mul(feat, atten)
+        out = torch.mul(feat, atten) # pylint: disable=E1101
         return out
 
     def init_weight(self):
@@ -105,7 +104,7 @@ class ContextPath(nn.Module):
         H16, W16 = feat16.size()[2:]
         H32, W32 = feat32.size()[2:]
 
-        avg = F.avg_pool2d(feat32, feat32.size()[2:])
+        avg = F.avg_pool2d(feat32, feat32.size()[2:]) # pylint: disable=E1102
         avg = self.conv_avg(avg)
         avg_up = F.interpolate(avg, (H32, W32), mode='nearest')
 
@@ -195,14 +194,14 @@ class FeatureFusionModule(nn.Module):
         self.init_weight()
 
     def forward(self, fsp, fcp):
-        fcat = torch.cat([fsp, fcp], dim=1)
+        fcat = torch.cat([fsp, fcp], dim=1) # pylint: disable=E1101
         feat = self.convblk(fcat)
-        atten = F.avg_pool2d(feat, feat.size()[2:])
+        atten = F.avg_pool2d(feat, feat.size()[2:]) # pylint: disable=E1102
         atten = self.conv1(atten)
         atten = self.relu(atten)
         atten = self.conv2(atten)
         atten = self.sigmoid(atten)
-        feat_atten = torch.mul(feat, atten)
+        feat_atten = torch.mul(feat, atten) # pylint: disable=E1101
         feat_out = feat_atten + feat
         return feat_out
 
@@ -214,7 +213,7 @@ class FeatureFusionModule(nn.Module):
 
     def get_params(self):
         wd_params, nowd_params = [], []
-        for name, module in self.named_modules():
+        for _, module in self.named_modules():
             if isinstance(module, nn.Linear) or isinstance(module, nn.Conv2d):
                 wd_params.append(module.weight)
                 if not module.bias is None:
@@ -258,7 +257,7 @@ class BiSeNet(nn.Module):
 
     def get_params(self):
         wd_params, nowd_params, lr_mul_wd_params, lr_mul_nowd_params = [], [], [], []
-        for name, child in self.named_children():
+        for _, child in self.named_children():
             child_wd_params, child_nowd_params = child.get_params()
             if isinstance(child, FeatureFusionModule) or isinstance(child, BiSeNetOutput):
                 lr_mul_wd_params += child_wd_params

@@ -10,7 +10,7 @@
 
 import torch
 
-from .. import misc
+from generator.stylegan3.torch_utils import misc
 from . import conv2d_gradfix
 from . import upfirdn2d
 from .upfirdn2d import _parse_padding

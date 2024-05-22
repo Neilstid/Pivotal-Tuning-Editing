@@ -13,8 +13,8 @@ import numpy as np
 import torch
 from generator.stylegan3 import dnnlib
 
-from .. import custom_ops
-from .. import misc
+from generator.stylegan3.torch_utils import custom_ops
+from generator.stylegan3.torch_utils import misc
 
 #----------------------------------------------------------------------------
 
@@ -22,18 +22,18 @@ activation_funcs = {
     'linear':   dnnlib.EasyDict(func=lambda x, **_:         x,                                          def_alpha=0,    def_gain=1,             cuda_idx=1, ref='',  has_2nd_grad=False),
     'relu':     dnnlib.EasyDict(func=lambda x, **_:         torch.nn.functional.relu(x),                def_alpha=0,    def_gain=np.sqrt(2),    cuda_idx=2, ref='y', has_2nd_grad=False),
     'lrelu':    dnnlib.EasyDict(func=lambda x, alpha, **_:  torch.nn.functional.leaky_relu(x, alpha),   def_alpha=0.2,  def_gain=np.sqrt(2),    cuda_idx=3, ref='y', has_2nd_grad=False),
-    'tanh':     dnnlib.EasyDict(func=lambda x, **_:         torch.tanh(x),                              def_alpha=0,    def_gain=1,             cuda_idx=4, ref='y', has_2nd_grad=True),
-    'sigmoid':  dnnlib.EasyDict(func=lambda x, **_:         torch.sigmoid(x),                           def_alpha=0,    def_gain=1,             cuda_idx=5, ref='y', has_2nd_grad=True),
+    'tanh':     dnnlib.EasyDict(func=lambda x, **_:         torch.tanh(x),                              def_alpha=0,    def_gain=1,             cuda_idx=4, ref='y', has_2nd_grad=True), # pylint: disable=E1101
+    'sigmoid':  dnnlib.EasyDict(func=lambda x, **_:         torch.sigmoid(x),                           def_alpha=0,    def_gain=1,             cuda_idx=5, ref='y', has_2nd_grad=True), # pylint: disable=E1101
     'elu':      dnnlib.EasyDict(func=lambda x, **_:         torch.nn.functional.elu(x),                 def_alpha=0,    def_gain=1,             cuda_idx=6, ref='y', has_2nd_grad=True),
     'selu':     dnnlib.EasyDict(func=lambda x, **_:         torch.nn.functional.selu(x),                def_alpha=0,    def_gain=1,             cuda_idx=7, ref='y', has_2nd_grad=True),
-    'softplus': dnnlib.EasyDict(func=lambda x, **_:         torch.nn.functional.softplus(x),            def_alpha=0,    def_gain=1,             cuda_idx=8, ref='y', has_2nd_grad=True),
-    'swish':    dnnlib.EasyDict(func=lambda x, **_:         torch.sigmoid(x) * x,                       def_alpha=0,    def_gain=np.sqrt(2),    cuda_idx=9, ref='x', has_2nd_grad=True),
+    'softplus': dnnlib.EasyDict(func=lambda x, **_:         torch.nn.functional.softplus(x),            def_alpha=0,    def_gain=1,             cuda_idx=8, ref='y', has_2nd_grad=True), # pylint: disable=E1102
+    'swish':    dnnlib.EasyDict(func=lambda x, **_:         torch.sigmoid(x) * x,                       def_alpha=0,    def_gain=np.sqrt(2),    cuda_idx=9, ref='x', has_2nd_grad=True), # pylint: disable=E1101
 }
 
 #----------------------------------------------------------------------------
 
 _plugin = None
-_null_tensor = torch.empty([0])
+_null_tensor = torch.empty([0]) # pylint: disable=E1101
 
 def _init():
     global _plugin
@@ -164,7 +164,7 @@ def _bias_act_cuda(dim=1, act='linear', alpha=None, gain=None, clamp=None):
             if ctx.needs_input_grad[0] or ctx.needs_input_grad[1]:
                 dx = dy
                 if act != 'linear' or gain != 1 or clamp >= 0:
-                    dx = BiasActCudaGrad.apply(dy, x, b, y)
+                    dx = BiasActCudaGrad.apply(dy, x, b, y) # pylint: disable=E1101
 
             if ctx.needs_input_grad[1]:
                 db = dx.sum([i for i in range(dx.ndim) if i != dim])
@@ -192,7 +192,7 @@ def _bias_act_cuda(dim=1, act='linear', alpha=None, gain=None, clamp=None):
             d_y = None
 
             if ctx.needs_input_grad[0]:
-                d_dy = BiasActCudaGrad.apply(d_dx, x, b, y)
+                d_dy = BiasActCudaGrad.apply(d_dx, x, b, y) # pylint: disable=E1101
 
             if spec.has_2nd_grad and (ctx.needs_input_grad[1] or ctx.needs_input_grad[2]):
                 d_x = _plugin.bias_act(d_dx, b, x, y, dy, 2, dim, spec.cuda_idx, alpha, gain, clamp)

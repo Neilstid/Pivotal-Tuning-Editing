@@ -12,7 +12,7 @@ import ctypes
 import fnmatch
 import importlib
 import inspect
-import numpy as np
+from typing import Any, List, Tuple, Union
 import os
 import shutil
 import sys
@@ -28,9 +28,8 @@ import tempfile
 import urllib
 import urllib.request
 import uuid
-
+import numpy as np
 from distutils.util import strtobool
-from typing import Any, List, Tuple, Union
 
 
 # Util classes
