@@ -3,7 +3,7 @@ import torch
 
 from invertor.pte import PivotalTuningEdition
 
-
+# You can change the path to your custom model
 model = PivotalTuningEdition.load("./pte.pkl")
 
 def generate(feature):
